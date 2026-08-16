@@ -1111,7 +1111,7 @@ export default function ReportCardWidget() {
               
               <a
                 href="https://jids.in/register?src=schoolreportcard-popup-download"
-                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-red-750 text-white font-bold hover:bg-red-700 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-center"
+                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-red-700 text-white font-bold hover:bg-red-600 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-center"
               >
                 Register Free on JIDS.IN (Bulk Cloud Tools)
               </a>
