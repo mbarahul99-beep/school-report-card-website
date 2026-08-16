@@ -203,16 +203,26 @@ export default function ReportCardWidget() {
     const originalTransform = element.style.transform
     const originalWidth = element.style.width
     const originalHeight = element.style.height
+    const originalPosition = element.style.position
+    const originalTop = element.style.top
+    const originalLeft = element.style.left
+    const originalZIndex = element.style.zIndex
+    const originalMargin = element.style.margin
 
     try {
       // 1. Dynamically import html2canvas-pro and jspdf to avoid server compiling dependencies
       const html2canvas = (await import('html2canvas-pro')).default
       const { jsPDF } = await import('jspdf')
 
-      // 2. Temporarily reset scaling transforms for clear full-res render
+      // 2. Temporarily reset scaling transforms and place in fixed viewport to prevent parent clipping
       element.style.transform = 'none'
       element.style.width = '794px'
       element.style.height = '1123px'
+      element.style.position = 'fixed'
+      element.style.top = '0'
+      element.style.left = '0'
+      element.style.zIndex = '99999'
+      element.style.margin = '0'
 
       // 3. Render element to high-res canvas
       const canvas = await html2canvas(element, {
@@ -236,7 +246,19 @@ export default function ReportCardWidget() {
 
       // A4 is 210mm x 297mm
       pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297)
+      
+      // Save PDF locally on the device
       pdf.save(`${studentName.replace(/\s+/g, '_')}_Report_Card.pdf`)
+
+      // Open PDF automatically in a new window/tab
+      try {
+        const pdfBlob = pdf.output('blob')
+        const blobUrl = URL.createObjectURL(pdfBlob)
+        window.open(blobUrl, '_blank')
+      } catch (openErr) {
+        console.error('Failed to open PDF in new tab:', openErr)
+        // Some mobile browsers block window.open, but the file download is already triggered.
+      }
     } catch (err) {
       console.error('Failed to generate PDF:', err)
       alert('Could not download PDF. Please try printing or use JIDS cloud tools.')
@@ -245,6 +267,11 @@ export default function ReportCardWidget() {
       element.style.transform = originalTransform
       element.style.width = originalWidth
       element.style.height = originalHeight
+      element.style.position = originalPosition
+      element.style.top = originalTop
+      element.style.left = originalLeft
+      element.style.zIndex = originalZIndex
+      element.style.margin = originalMargin
       
       setIsGeneratingPdf(false)
       setShowModal(false)
@@ -1050,12 +1077,12 @@ export default function ReportCardWidget() {
       {/* REGISTRATION MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 sm:p-8 shadow-2xl border border-zinc-100 flex flex-col relative animate-scaleUp">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 sm:p-8 shadow-2xl border border-zinc-200 flex flex-col relative animate-scaleUp">
             
             {/* Top Close Arrow Button */}
             <button 
               onClick={() => setShowModal(false)}
-              className="absolute top-4 left-4 p-2 text-zinc-450 hover:text-zinc-950 hover:bg-zinc-100 rounded-full transition-colors"
+              className="absolute top-4 left-4 p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-full transition-colors"
               title="Go Back"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -1065,11 +1092,11 @@ export default function ReportCardWidget() {
               <ShieldAlert className="h-6 w-6" />
             </div>
             
-            <h4 className="text-lg font-bold text-zinc-955 text-center">Your Report Card is Ready!</h4>
+            <h4 className="text-lg font-bold text-zinc-900 text-center">Your Report Card is Ready!</h4>
             <p className="text-xs text-zinc-500 text-center mt-1">
               (You have unlimited free downloads from this browser builder)
             </p>
-            <p className="text-sm text-zinc-650 text-center mt-3 leading-relaxed">
+            <p className="text-sm text-zinc-700 text-center mt-3 leading-relaxed">
               Would you like to download this individual report card as a PDF directly, or register free on JIDS to create and manage report cards in bulk from Excel lists?
             </p>
 
@@ -1077,18 +1104,39 @@ export default function ReportCardWidget() {
               <button
                 onClick={triggerPdfDownload}
                 disabled={isGeneratingPdf}
-                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-505 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF (Browser Free)'}
               </button>
               
               <a
                 href="https://jids.in/register?src=schoolreportcard-popup-download"
-                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-red-700 text-white font-bold hover:bg-red-600 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-center"
+                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-red-750 text-white font-bold hover:bg-red-700 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-center"
               >
                 Register Free on JIDS.IN (Bulk Cloud Tools)
               </a>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL SCREEN PDF GENERATOR OVERLAY WITH SPINNING ANIMATIONS */}
+      {isGeneratingPdf && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-md text-white animate-fadeIn">
+          <div className="flex flex-col items-center max-w-sm text-center px-6">
+            {/* Spinning Loader */}
+            <div className="relative flex items-center justify-center h-20 w-20 mb-6">
+              <div className="absolute inset-0 border-4 border-zinc-700 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-t-red-600 rounded-full animate-spin"></div>
+              <Sparkles className="h-8 w-8 text-red-500 animate-pulse" />
+            </div>
+            <h3 className="text-lg font-bold tracking-tight">Generating PDF Report Card</h3>
+            <p className="text-xs text-zinc-400 mt-2 animate-pulse">
+              Compiling high-resolution A4 layout and embedding school credentials...
+            </p>
+            <p className="text-[10px] text-zinc-500 mt-8 font-medium">
+              This runs entirely in your browser and will download and open automatically.
+            </p>
           </div>
         </div>
       )}
