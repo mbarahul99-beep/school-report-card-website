@@ -42,13 +42,14 @@ export default function ReportCardWidget() {
   const [fatherName, setFatherName] = useState('MR. VIKRANT MALHOTRA')
   const [motherName, setMotherName] = useState('MRS. RIDHI MALHOTRA')
   
-  // Custom uploads (browser-only base64)
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const [studentPhotoUrl, setStudentPhotoUrl] = useState<string | null>(null)
+  // Custom uploads (pre-populated with generated default assets from copy)
+  const [logoUrl, setLogoUrl] = useState<string | null>('/school-logo.jpg')
+  const [studentPhotoUrl, setStudentPhotoUrl] = useState<string | null>('/student-photo.jpg')
+  
   const logoInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // Scholastic subjects data
+  // Scholastic subjects data (A4 optimized layout constraints)
   const [subjects, setSubjects] = useState<SubjectRow[]>([
     { name: 'English', t1_pt: 10, t1_nb: 4, t1_se: 4, t1_exam: 76, t2_pt: 8, t2_nb: 4, t2_se: 5, t2_exam: 71 },
     { name: 'Hindi', t1_pt: 8, t1_nb: 4, t1_se: 5, t1_exam: 68, t2_pt: 9, t2_nb: 5, t2_se: 4, t2_exam: 78 },
@@ -181,7 +182,7 @@ export default function ReportCardWidget() {
   const totalT1Obtained = subjects.reduce((sum, row) => sum + getT1Total(row), 0)
   const totalT2Obtained = subjects.reduce((sum, row) => sum + getT2Total(row), 0)
   const totalOverallObtained = totalT1Obtained + totalT2Obtained
-  const maxPossibleOverall = subjects.length * 200 // 100 Term 1 + 100 Term 2 per subject
+  const maxPossibleOverall = subjects.length * 200
   const maxPossibleTerm = subjects.length * 100
 
   const t1Percentage = maxPossibleTerm > 0 ? parseFloat(((totalT1Obtained / maxPossibleTerm) * 100).toFixed(1)) : 0
@@ -189,7 +190,7 @@ export default function ReportCardWidget() {
   const overallPercentage = maxPossibleOverall > 0 ? parseFloat(((totalOverallObtained / maxPossibleOverall) * 100).toFixed(2)) : 0
   const overallGrade = getGrade(overallPercentage)
 
-  // Dynamic html2pdf generator
+  // Robust client-side html2pdf generator with transform-reset fix
   const triggerPdfDownload = async () => {
     setIsGeneratingPdf(true)
     const element = document.getElementById('report-card-print-area')
@@ -199,29 +200,50 @@ export default function ReportCardWidget() {
     }
 
     try {
-      // 1. Inject html2pdf script dynamically if not present
+      // 1. Inject html2pdf script if missing
       if (!(window as any).html2pdf) {
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script')
           script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
           script.onload = () => resolve()
+          script.onerror = () => reject(new Error('Failed to load html2pdf script'))
           document.body.appendChild(script)
         })
       }
 
-      // 2. Generate PDF with exact A4 configuration
+      // 2. Temporarily reset scaling transforms for clear full-res render
+      const originalTransform = element.style.transform
+      const originalWidth = element.style.width
+      const originalHeight = element.style.height
+      
+      element.style.transform = 'none'
+      element.style.width = '794px'
+      element.style.height = '1123px'
+
+      // 3. Configure html2pdf with A4 properties
       const opt = {
         margin: 0,
         filename: `${studentName.replace(/\s+/g, '_')}_Report_Card.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait' }
+        image: { type: 'jpeg', quality: 1.0 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          logging: false,
+          width: 794,
+          height: 1123
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
       await (window as any).html2pdf().set(opt).from(element).save()
+
+      // 4. Restore styles
+      element.style.transform = originalTransform
+      element.style.width = originalWidth
+      element.style.height = originalHeight
     } catch (err) {
       console.error('Failed to generate PDF:', err)
-      alert('Could not download PDF. Please try printing or use the cloud dashboard.')
+      alert('Could not download PDF. Please try printing or use JIDS cloud tools.')
     } finally {
       setIsGeneratingPdf(false)
       setShowModal(false)
@@ -233,7 +255,7 @@ export default function ReportCardWidget() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* INPUT CONTROLS PANEL (LEFT COLUMN) */}
-        <div className="lg:col-span-5 xl:col-span-4 space-y-6 max-h-[1130px] overflow-y-auto pr-2">
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6 max-h-[1150px] overflow-y-auto pr-2">
           <div>
             <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-red-600 fill-red-100" />
@@ -261,7 +283,7 @@ export default function ReportCardWidget() {
                 />
                 <button
                   onClick={() => logoInputRef.current?.click()}
-                  className="w-full h-24 border-2 border-dashed border-zinc-200 hover:border-red-500 rounded-lg flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-red-600 bg-zinc-50 hover:bg-red-50/20 transition-all"
+                  className="w-full h-24 border-2 border-dashed border-zinc-200 hover:border-red-500 rounded-lg flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-red-600 bg-zinc-50 hover:bg-red-50/20 transition-all overflow-hidden"
                 >
                   {logoUrl ? (
                     <img src={logoUrl} alt="Logo" className="max-h-20 object-contain p-1" />
@@ -285,7 +307,7 @@ export default function ReportCardWidget() {
                 />
                 <button
                   onClick={() => photoInputRef.current?.click()}
-                  className="w-full h-24 border-2 border-dashed border-zinc-200 hover:border-red-500 rounded-lg flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-red-600 bg-zinc-50 hover:bg-red-50/20 transition-all"
+                  className="w-full h-24 border-2 border-dashed border-zinc-200 hover:border-red-500 rounded-lg flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-red-600 bg-zinc-50 hover:bg-red-50/20 transition-all overflow-hidden"
                 >
                   {studentPhotoUrl ? (
                     <img src={studentPhotoUrl} alt="Student" className="max-h-20 object-contain p-1 rounded" />
@@ -552,57 +574,72 @@ export default function ReportCardWidget() {
             </div>
           </div>
 
-          {/* Co-scholastic traits */}
-          <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700">Personality & Extracurricular</h4>
-            <div className="space-y-2 text-[10px]">
-              <span className="block font-semibold text-zinc-500">Co-Scholastic Grades (Term I & II)</span>
-              {coScholastic.map((row, idx) => (
-                <div key={idx} className="flex justify-between items-center gap-2">
-                  <span className="truncate w-28 text-zinc-600 font-medium">{row.name}</span>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={row.t1_grade}
-                      onChange={(e) => updateCoScholastic(idx, true, e.target.value)}
-                      className="w-7 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50"
-                      maxLength={1}
-                    />
-                    <input
-                      type="text"
-                      value={row.t2_grade}
-                      onChange={(e) => updateCoScholastic(idx, false, e.target.value)}
-                      className="w-7 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50"
-                      maxLength={1}
-                    />
+          {/* Co-scholastic & extracurricular traits vertically stacked to prevent overlap */}
+          <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-4">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700 mb-2">Personality Traits</h4>
+              <div className="space-y-3">
+                {coScholastic.map((row, idx) => (
+                  <div key={idx} className="border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0 space-y-1.5 text-xs">
+                    <span className="block font-bold text-zinc-800">{row.name}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-zinc-400 font-semibold">Term 1:</span>
+                        <input
+                          type="text"
+                          value={row.t1_grade}
+                          onChange={(e) => updateCoScholastic(idx, true, e.target.value)}
+                          className="w-8 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50 font-bold text-zinc-950"
+                          maxLength={1}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-zinc-400 font-semibold">Term 2:</span>
+                        <input
+                          type="text"
+                          value={row.t2_grade}
+                          onChange={(e) => updateCoScholastic(idx, false, e.target.value)}
+                          className="w-8 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50 font-bold text-zinc-950"
+                          maxLength={1}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            <div className="space-y-2 text-[10px] border-t border-zinc-100 pt-3">
-              <span className="block font-semibold text-zinc-500">Extracurricular Grades (Term I & II)</span>
-              {extracurricular.map((row, idx) => (
-                <div key={idx} className="flex justify-between items-center gap-2">
-                  <span className="truncate w-28 text-zinc-600 font-medium">{row.name}</span>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={row.t1_grade}
-                      onChange={(e) => updateExtracurricular(idx, true, e.target.value)}
-                      className="w-7 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50"
-                      maxLength={1}
-                    />
-                    <input
-                      type="text"
-                      value={row.t2_grade}
-                      onChange={(e) => updateExtracurricular(idx, false, e.target.value)}
-                      className="w-7 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50"
-                      maxLength={1}
-                    />
+            <div className="border-t border-zinc-200 pt-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700 mb-2">Extracurricular Activities</h4>
+              <div className="space-y-3">
+                {extracurricular.map((row, idx) => (
+                  <div key={idx} className="border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0 space-y-1.5 text-xs">
+                    <span className="block font-bold text-zinc-800">{row.name}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-zinc-400 font-semibold">Term 1:</span>
+                        <input
+                          type="text"
+                          value={row.t1_grade}
+                          onChange={(e) => updateExtracurricular(idx, true, e.target.value)}
+                          className="w-8 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50 font-bold text-zinc-950"
+                          maxLength={1}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-zinc-400 font-semibold">Term 2:</span>
+                        <input
+                          type="text"
+                          value={row.t2_grade}
+                          onChange={(e) => updateExtracurricular(idx, false, e.target.value)}
+                          className="w-8 h-7 text-center border border-zinc-200 rounded uppercase bg-zinc-50 font-bold text-zinc-950"
+                          maxLength={1}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
 
@@ -645,11 +682,11 @@ export default function ReportCardWidget() {
             ↔ Pinch-zoom or scroll horizontally to view full A4 sheet on mobile.
           </div>
 
-          {/* Dynamic scaling outer container */}
+          {/* Dynamic scaling outer container with extra padding (height + 25px) to prevent bottom cutting */}
           <div 
             ref={containerRef} 
             className="w-full flex justify-center overflow-hidden border border-zinc-200 rounded-2xl bg-zinc-100/50 p-4 shadow-inner"
-            style={{ height: `${1123 * scale}px` }}
+            style={{ height: `${(1123 * scale) + 25}px` }}
           >
             <div
               id="report-card-print-area"
@@ -659,13 +696,13 @@ export default function ReportCardWidget() {
                 transform: `scale(${scale})`,
                 transformOrigin: 'top center',
               }}
-              className="border-2 border-red-700 bg-white p-6 shadow-sm flex flex-col justify-between rounded-xl font-sans text-[11px] text-zinc-900 leading-normal select-none shrink-0"
+              className="border-2 border-red-700 bg-white p-5 sm:p-6 shadow-sm flex flex-col justify-between rounded-xl font-sans text-[11px] text-zinc-900 leading-normal select-none shrink-0"
             >
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {/* Header Area */}
-                <div className="relative flex flex-col items-center text-center border-b-2 border-red-700 pb-3">
+                <div className="relative flex flex-col items-center text-center border-b-2 border-red-700 pb-2.5">
                   {/* Logo block */}
-                  <div className="absolute left-0 top-0 h-16 w-16 border border-red-700 rounded-full flex items-center justify-center overflow-hidden">
+                  <div className="absolute left-0 top-0 h-16 w-16 border border-red-700 rounded-full flex items-center justify-center overflow-hidden bg-white">
                     {logoUrl ? (
                       <img src={logoUrl} alt="School Logo" className="h-full w-full object-contain p-1" />
                     ) : (
@@ -674,7 +711,7 @@ export default function ReportCardWidget() {
                   </div>
 
                   {/* Title & info */}
-                  <h2 className="font-sans font-black text-red-700 text-xl tracking-tight leading-none uppercase pr-6 pl-16">
+                  <h2 className="font-sans font-black text-red-700 text-[19px] tracking-tight leading-none uppercase pr-6 pl-16">
                     {schoolName}
                   </h2>
                   <p className="text-[9px] font-bold text-zinc-700 tracking-wide mt-1 pr-6 pl-16">
@@ -689,19 +726,19 @@ export default function ReportCardWidget() {
                 </div>
 
                 {/* Block annual examination report card title */}
-                <div className="flex flex-col items-center justify-center space-y-2">
-                  <div className="bg-red-700 text-white font-black text-[13px] tracking-wider py-1 px-8 rounded uppercase font-sans text-center shadow-sm">
+                <div className="flex flex-col items-center justify-center space-y-1.5">
+                  <div className="bg-red-700 text-white font-black text-[12px] tracking-wider py-0.5 px-6 rounded uppercase font-sans text-center shadow-sm">
                     {reportTitle}
                   </div>
-                  <div className="inline-flex border border-red-700 text-red-700 font-bold px-4 py-0.5 rounded-full text-[9px] tracking-widest uppercase">
+                  <div className="inline-flex border border-red-700 text-red-700 font-bold px-3 py-0.5 rounded-full text-[8.5px] tracking-widest uppercase">
                     {session}
                   </div>
                 </div>
 
                 {/* Student profiles & photo block */}
-                <div className="grid grid-cols-12 gap-4 items-center bg-zinc-50/50 border border-zinc-150 rounded-xl p-4">
+                <div className="grid grid-cols-12 gap-4 items-center bg-zinc-50/50 border border-zinc-150 rounded-xl p-3.5">
                   {/* Student details labels */}
-                  <div className="col-span-9 grid grid-cols-2 gap-x-6 gap-y-2.5 font-medium text-zinc-800">
+                  <div className="col-span-9 grid grid-cols-2 gap-x-6 gap-y-2 font-medium text-zinc-800 text-[10.5px]">
                     <div className="flex">
                       <span className="w-24 font-bold text-zinc-500">Student's Name</span>
                       <span className="px-1">:</span>
@@ -760,50 +797,47 @@ export default function ReportCardWidget() {
 
                   {/* Photo Area */}
                   <div className="col-span-3 flex justify-end">
-                    <div className="h-28 w-24 border border-zinc-300 bg-zinc-50 rounded-lg overflow-hidden flex items-center justify-center p-1 shadow-sm">
+                    <div className="h-24 w-20 border border-zinc-300 bg-white rounded-lg overflow-hidden flex items-center justify-center p-1 shadow-sm">
                       {studentPhotoUrl ? (
                         <img src={studentPhotoUrl} alt="Student" className="h-full w-full object-cover rounded" />
                       ) : (
-                        <div className="text-center text-zinc-455 p-2 flex flex-col items-center justify-center gap-1">
-                          <ImageIcon className="h-8 w-8 stroke-[1]" />
-                          <span className="text-[8px] uppercase tracking-tighter">Photo</span>
+                        <div className="text-center text-zinc-400 p-2 flex flex-col items-center justify-center gap-1">
+                          <ImageIcon className="h-6 w-6 stroke-[1]" />
+                          <span className="text-[7px] uppercase tracking-tighter">Photo</span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Performance table area */}
+                {/* Performance table area - tightened vertical padding for exact 1123px fit */}
                 <div className="border border-zinc-800 rounded-lg overflow-hidden">
-                  <table className="w-full text-[9.5px] border-collapse">
+                  <table className="w-full text-[9px] border-collapse">
                     <thead>
-                      {/* Category Title bar */}
                       <tr className="bg-zinc-100 text-zinc-850 font-bold text-center border-b border-zinc-800">
-                        <td colSpan={15} className="py-1 uppercase font-extrabold text-[10px] tracking-wider">Scholastic Performance</td>
+                        <td colSpan={15} className="py-0.5 uppercase font-extrabold text-[9.5px] tracking-wider">Scholastic Performance</td>
                       </tr>
-                      {/* Column headers level 1 */}
-                      <tr className="bg-zinc-50 text-zinc-800 text-center font-bold border-b border-zinc-800 divide-x divide-zinc-300">
-                        <th rowSpan={2} className="py-2 px-2 text-left w-32">SCHOLASTIC SUBJECTS</th>
-                        <th colSpan={6} className="py-1">ACADEMIC TERM I</th>
-                        <th colSpan={6} className="py-1">ACADEMIC TERM II</th>
-                        <th colSpan={2} className="py-1">OVERALL RESULTS</th>
+                      <tr className="bg-zinc-50 text-zinc-850 text-center font-bold border-b border-zinc-800 divide-x divide-zinc-300">
+                        <th rowSpan={2} className="py-1 px-1.5 text-left w-32">SCHOLASTIC SUBJECTS</th>
+                        <th colSpan={6} className="py-0.5">ACADEMIC TERM I</th>
+                        <th colSpan={6} className="py-0.5">ACADEMIC TERM II</th>
+                        <th colSpan={2} className="py-0.5">OVERALL RESULTS</th>
                       </tr>
-                      {/* Column headers level 2 */}
-                      <tr className="bg-zinc-50 text-zinc-650 text-[8.5px] font-bold text-center border-b border-zinc-800 divide-x divide-zinc-300">
-                        <th className="py-1 w-8">Periodic Test (10)</th>
-                        <th className="py-1 w-6">NB (5)</th>
-                        <th className="py-1 w-6">SE (5)</th>
-                        <th className="py-1 w-10">Mid-Term (80)</th>
-                        <th className="py-1 w-10">T1 Total (100)</th>
-                        <th className="py-1 w-8">Grade</th>
-                        <th className="py-1 w-8">Periodic Test (10)</th>
-                        <th className="py-1 w-6">NB (5)</th>
-                        <th className="py-1 w-6">SE (5)</th>
-                        <th className="py-1 w-10">Annual (80)</th>
-                        <th className="py-1 w-10">T2 Total (100)</th>
-                        <th className="py-1 w-8">Grade</th>
-                        <th className="py-1 w-12 font-bold text-zinc-800">Total Marks (200)</th>
-                        <th className="py-1 w-8 font-bold text-zinc-800">Grade</th>
+                      <tr className="bg-zinc-50 text-zinc-650 text-[8px] font-bold text-center border-b border-zinc-800 divide-x divide-zinc-300">
+                        <th className="py-0.5 w-8">Periodic Test (10)</th>
+                        <th className="py-0.5 w-6">NB (5)</th>
+                        <th className="py-0.5 w-6">SE (5)</th>
+                        <th className="py-0.5 w-10">Mid-Term (80)</th>
+                        <th className="py-0.5 w-10">T1 Total (100)</th>
+                        <th className="py-0.5 w-8">Grade</th>
+                        <th className="py-0.5 w-8">Periodic Test (10)</th>
+                        <th className="py-0.5 w-6">NB (5)</th>
+                        <th className="py-0.5 w-6">SE (5)</th>
+                        <th className="py-0.5 w-10">Annual (80)</th>
+                        <th className="py-0.5 w-10">T2 Total (100)</th>
+                        <th className="py-0.5 w-8">Grade</th>
+                        <th className="py-0.5 w-12 font-bold text-zinc-850">Total Marks (200)</th>
+                        <th className="py-0.5 w-8 font-bold text-zinc-850">Grade</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-200 text-zinc-800 text-center font-medium">
@@ -817,21 +851,21 @@ export default function ReportCardWidget() {
 
                         return (
                           <tr key={index} className="hover:bg-zinc-50/20 divide-x divide-zinc-200">
-                            <td className="py-2 px-2 text-left font-bold text-zinc-900">{sub.name}</td>
-                            <td className="py-2">{sub.t1_pt}</td>
-                            <td className="py-2">{sub.t1_nb}</td>
-                            <td className="py-2">{sub.t1_se}</td>
-                            <td className="py-2">{sub.t1_exam}</td>
-                            <td className="py-2 font-bold">{t1_tot}</td>
-                            <td className="py-2 font-bold text-zinc-900">{t1_grd}</td>
-                            <td className="py-2">{sub.t2_pt}</td>
-                            <td className="py-2">{sub.t2_nb}</td>
-                            <td className="py-2">{sub.t2_se}</td>
-                            <td className="py-2">{sub.t2_exam}</td>
-                            <td className="py-2 font-bold">{t2_tot}</td>
-                            <td className="py-2 font-bold text-zinc-900">{t2_grd}</td>
-                            <td className="py-2 font-black text-zinc-900 bg-zinc-50/20">{over_tot}</td>
-                            <td className="py-2 font-black text-red-700 bg-zinc-50/20">{over_grd}</td>
+                            <td className="py-1 px-1.5 text-left font-bold text-zinc-900">{sub.name}</td>
+                            <td className="py-1">{sub.t1_pt}</td>
+                            <td className="py-1">{sub.t1_nb}</td>
+                            <td className="py-1">{sub.t1_se}</td>
+                            <td className="py-1">{sub.t1_exam}</td>
+                            <td className="py-1 font-bold">{t1_tot}</td>
+                            <td className="py-1 font-bold text-zinc-900">{t1_grd}</td>
+                            <td className="py-1">{sub.t2_pt}</td>
+                            <td className="py-1">{sub.t2_nb}</td>
+                            <td className="py-1">{sub.t2_se}</td>
+                            <td className="py-1">{sub.t2_exam}</td>
+                            <td className="py-1 font-bold">{t2_tot}</td>
+                            <td className="py-1 font-bold text-zinc-900">{t2_grd}</td>
+                            <td className="py-1 font-black text-zinc-900 bg-zinc-50/20">{over_tot}</td>
+                            <td className="py-1 font-black text-red-700 bg-zinc-50/20">{over_grd}</td>
                           </tr>
                         )
                       })}
@@ -841,45 +875,45 @@ export default function ReportCardWidget() {
 
                 {/* Scholastic Summary box */}
                 <div className="border border-zinc-800 rounded-lg overflow-hidden">
-                  <table className="w-full text-[9.5px] border-collapse text-center">
+                  <table className="w-full text-[9px] border-collapse text-center">
                     <thead>
-                      <tr className="bg-zinc-100 text-zinc-800 font-bold border-b border-zinc-800 divide-x divide-zinc-800">
-                        <th className="py-1.5 px-4 text-left w-32">SCHOLASTIC SUMMARY</th>
-                        <th className="py-1.5">TERM 1</th>
-                        <th className="py-1.5">TERM 2</th>
+                      <tr className="bg-zinc-100 text-zinc-850 font-bold border-b border-zinc-800 divide-x divide-zinc-800">
+                        <th className="py-1 px-4 text-left w-32">SCHOLASTIC SUMMARY</th>
+                        <th className="py-1">TERM 1</th>
+                        <th className="py-1">TERM 2</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-300 font-bold text-zinc-800">
                       <tr className="divide-x divide-zinc-300">
-                        <td className="py-1.5 px-4 text-left font-semibold text-zinc-500">Marks Obtained</td>
-                        <td className="py-1.5">{totalT1Obtained} / {maxPossibleTerm}</td>
-                        <td className="py-1.5">{totalT2Obtained} / {maxPossibleTerm}</td>
+                        <td className="py-1 px-4 text-left font-semibold text-zinc-500">Marks Obtained</td>
+                        <td className="py-1">{totalT1Obtained} / {maxPossibleTerm}</td>
+                        <td className="py-1">{totalT2Obtained} / {maxPossibleTerm}</td>
                       </tr>
                       <tr className="divide-x divide-zinc-300">
-                        <td className="py-1.5 px-4 text-left font-semibold text-zinc-500">Percentage</td>
-                        <td className="py-1.5 text-zinc-900">{t1Percentage}%</td>
-                        <td className="py-1.5 text-zinc-900">{t2Percentage}%</td>
+                        <td className="py-1 px-4 text-left font-semibold text-zinc-500">Percentage</td>
+                        <td className="py-1 text-zinc-950">{t1Percentage}%</td>
+                        <td className="py-1 text-zinc-950">{t2Percentage}%</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
 
-                {/* Quick stats indicators block (4 badges in a row) */}
-                <div className="grid grid-cols-4 gap-3 text-center text-[10px] font-black uppercase text-white tracking-wider">
-                  <div className="py-2.5 px-1 rounded-lg text-zinc-800 bg-zinc-100 border border-zinc-300 shadow-sm flex flex-col justify-center">
-                    <span className="text-[8px] font-semibold text-zinc-505 block mb-0.5">Working Attendance</span>
-                    <span className="text-zinc-955 font-black text-xs">{attendance}</span>
+                {/* Quick stats indicators block */}
+                <div className="grid grid-cols-4 gap-3 text-center text-[9px] font-black uppercase text-white tracking-wider">
+                  <div className="py-2 px-1 rounded-lg text-zinc-800 bg-zinc-100 border border-zinc-300 shadow-sm flex flex-col justify-center">
+                    <span className="text-[7.5px] font-semibold text-zinc-500 block mb-0.5">Working Attendance</span>
+                    <span className="text-zinc-950 font-black text-xs">{attendance}</span>
                   </div>
-                  <div className="bg-indigo-600 border border-indigo-700 py-2.5 px-1 rounded-lg shadow-sm flex flex-col justify-center">
-                    <span className="text-[8px] font-medium text-indigo-200 block mb-0.5">Total Marks Obtained</span>
+                  <div className="bg-indigo-600 border border-indigo-700 py-2 px-1 rounded-lg shadow-sm flex flex-col justify-center">
+                    <span className="text-[7.5px] font-medium text-indigo-200 block mb-0.5">Marks Obtained</span>
                     <span className="text-white font-black text-xs">{totalOverallObtained} / {maxPossibleOverall}</span>
                   </div>
-                  <div className="bg-emerald-600 border border-emerald-700 py-2.5 px-1 rounded-lg shadow-sm flex flex-col justify-center">
-                    <span className="text-[8px] font-medium text-emerald-200 block mb-0.5">Overall Percentage</span>
+                  <div className="bg-emerald-600 border border-emerald-700 py-2 px-1 rounded-lg shadow-sm flex flex-col justify-center">
+                    <span className="text-[7.5px] font-medium text-emerald-200 block mb-0.5">Overall Percentage</span>
                     <span className="text-white font-black text-xs">{overallPercentage} %</span>
                   </div>
-                  <div className="bg-red-600 border border-red-700 py-2.5 px-1 rounded-lg shadow-sm flex flex-col justify-center">
-                    <span className="text-[8px] font-medium text-red-200 block mb-0.5">Overall Grade</span>
+                  <div className="bg-red-600 border border-red-700 py-2 px-1 rounded-lg shadow-sm flex flex-col justify-center">
+                    <span className="text-[7.5px] font-medium text-red-200 block mb-0.5">Overall Grade</span>
                     <span className="text-white font-black text-xs">{overallGrade}</span>
                   </div>
                 </div>
@@ -887,20 +921,20 @@ export default function ReportCardWidget() {
                 {/* Co-scholastic & Extracurricular traits (5-point) grid side-by-side */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border border-zinc-800 rounded-lg overflow-hidden">
-                    <table className="w-full text-[9px] border-collapse text-left">
+                    <table className="w-full text-[8.5px] border-collapse text-left">
                       <thead>
-                        <tr className="bg-zinc-100 text-zinc-800 font-bold border-b border-zinc-800 divide-x divide-zinc-300">
-                          <th className="py-1.5 px-2">PERSONALITY & CO-SCHOLASTIC TRAITS</th>
-                          <th className="py-1.5 w-16 text-center">Academic Term I</th>
-                          <th className="py-1.5 w-16 text-center">Academic Term II</th>
+                        <tr className="bg-zinc-100 text-zinc-850 font-bold border-b border-zinc-800 divide-x divide-zinc-300">
+                          <th className="py-1 px-2">PERSONALITY & CO-SCHOLASTIC TRAITS</th>
+                          <th className="py-1 w-16 text-center">Term I</th>
+                          <th className="py-1 w-16 text-center">Term II</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-200 text-zinc-700 font-medium">
                         {coScholastic.map((row, idx) => (
                           <tr key={idx} className="divide-x divide-zinc-200">
-                            <td className="py-1.5 px-2 font-semibold text-zinc-800">{row.name}</td>
-                            <td className="py-1.5 text-center font-bold text-zinc-900">{row.t1_grade}</td>
-                            <td className="py-1.5 text-center font-bold text-zinc-900">{row.t2_grade}</td>
+                            <td className="py-1 px-2 font-semibold text-zinc-800">{row.name}</td>
+                            <td className="py-1 text-center font-bold text-zinc-950">{row.t1_grade}</td>
+                            <td className="py-1 text-center font-bold text-zinc-950">{row.t2_grade}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -908,20 +942,20 @@ export default function ReportCardWidget() {
                   </div>
 
                   <div className="border border-zinc-800 rounded-lg overflow-hidden">
-                    <table className="w-full text-[9px] border-collapse text-left">
+                    <table className="w-full text-[8.5px] border-collapse text-left">
                       <thead>
-                        <tr className="bg-zinc-100 text-zinc-800 font-bold border-b border-zinc-800 divide-x divide-zinc-300">
-                          <th className="py-1.5 px-2">CO-CURRICULAR / EXTRACURRICULAR</th>
-                          <th className="py-1.5 w-16 text-center">Academic Term I</th>
-                          <th className="py-1.5 w-16 text-center">Academic Term II</th>
+                        <tr className="bg-zinc-100 text-zinc-850 font-bold border-b border-zinc-800 divide-x divide-zinc-300">
+                          <th className="py-1 px-2">CO-CURRICULAR / EXTRACURRICULAR</th>
+                          <th className="py-1 w-16 text-center">Term I</th>
+                          <th className="py-1 w-16 text-center">Term II</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-200 text-zinc-700 font-medium">
                         {extracurricular.map((row, idx) => (
                           <tr key={idx} className="divide-x divide-zinc-200">
-                            <td className="py-1.5 px-2 font-semibold text-zinc-800">{row.name}</td>
-                            <td className="py-1.5 text-center font-bold text-zinc-900">{row.t1_grade}</td>
-                            <td className="py-1.5 text-center font-bold text-zinc-900">{row.t2_grade}</td>
+                            <td className="py-1 px-2 font-semibold text-zinc-800">{row.name}</td>
+                            <td className="py-1 text-center font-bold text-zinc-950">{row.t1_grade}</td>
+                            <td className="py-1 text-center font-bold text-zinc-950">{row.t2_grade}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -930,9 +964,9 @@ export default function ReportCardWidget() {
                 </div>
 
                 {/* Grading scale helper */}
-                <div className="grid grid-cols-2 gap-4 text-[8px] text-zinc-500 font-semibold border-t border-zinc-100 pt-2 leading-none">
-                  <div className="space-y-1">
-                    <span className="block uppercase text-zinc-400 font-bold">Grade Scale For Scholastic Areas:</span>
+                <div className="grid grid-cols-2 gap-4 text-[7.5px] text-zinc-550 font-semibold border-t border-zinc-100 pt-1.5 leading-none">
+                  <div className="space-y-0.5">
+                    <span className="block uppercase text-zinc-400 font-bold text-[7px]">Grade Scale For Scholastic Areas:</span>
                     <div className="flex flex-wrap gap-x-2">
                       <span>91-100: A1</span>
                       <span>81-90: A2</span>
@@ -944,8 +978,8 @@ export default function ReportCardWidget() {
                       <span>0-32: E</span>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <span className="block uppercase text-zinc-400 font-bold">Co-scholastic Grading Scale Area:</span>
+                  <div className="space-y-0.5">
+                    <span className="block uppercase text-zinc-400 font-bold text-[7px]">Co-scholastic Grading Scale Area:</span>
                     <div className="flex gap-4">
                       <span>A: Outstanding</span>
                       <span>B: Very Good</span>
@@ -955,19 +989,19 @@ export default function ReportCardWidget() {
                 </div>
               </div>
 
-              {/* Remarks, verdict, signatures */}
-              <div className="border-t-2 border-red-700 pt-3 flex flex-col gap-3.5 mt-auto">
+              {/* Remarks, verdict, signatures - positioned at absolute bottom */}
+              <div className="border-t-2 border-red-700 pt-2 flex flex-col gap-2.5 mt-auto">
                 <div className="grid grid-cols-12 gap-4 items-center">
-                  <div className="col-span-8 space-y-1 border border-zinc-200 rounded-lg p-2.5 bg-zinc-50/50">
-                    <span className="block font-bold text-[9px] uppercase tracking-wider text-zinc-500 leading-none mb-0.5">Teacher's Remarks:</span>
-                    <p className="italic text-zinc-700 text-[10px]">"{remarks}"</p>
+                  <div className="col-span-8 space-y-0.5 border border-zinc-200 rounded-lg p-2 bg-zinc-50/50">
+                    <span className="block font-bold text-[8.5px] uppercase tracking-wider text-zinc-500 leading-none mb-0.5">Teacher's Remarks:</span>
+                    <p className="italic text-zinc-700 text-[9.5px] leading-tight">"{remarks}"</p>
                   </div>
-                  <div className="col-span-4 border border-red-700 bg-red-50 text-red-700 text-center font-black p-2.5 rounded-lg flex items-center justify-center text-[10px] tracking-wide uppercase leading-tight">
+                  <div className="col-span-4 border border-red-700 bg-red-50 text-red-700 text-center font-black p-2 rounded-lg flex items-center justify-center text-[9.5px] tracking-wide uppercase leading-tight">
                     {promotionText}
                   </div>
                 </div>
 
-                <div className="flex justify-between items-end text-[9px] font-bold text-zinc-500 pt-6">
+                <div className="flex justify-between items-end text-[8.5px] font-bold text-zinc-500 pt-5">
                   <div className="text-center w-28 border-t border-zinc-400 pt-1">
                     Parent's Signature
                   </div>
@@ -1020,7 +1054,7 @@ export default function ReportCardWidget() {
               <ShieldAlert className="h-6 w-6" />
             </div>
             
-            <h4 className="text-lg font-bold text-zinc-950 text-center">Your Report Card is Ready!</h4>
+            <h4 className="text-lg font-bold text-zinc-955 text-center">Your Report Card is Ready!</h4>
             <p className="text-xs text-zinc-500 text-center mt-1">
               (You have unlimited free downloads from this browser builder)
             </p>
@@ -1032,7 +1066,7 @@ export default function ReportCardWidget() {
               <button
                 onClick={triggerPdfDownload}
                 disabled={isGeneratingPdf}
-                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-505 text-sm shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF (Browser Free)'}
               </button>
