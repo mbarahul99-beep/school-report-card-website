@@ -484,88 +484,98 @@ export default function ReportCardWidget() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-[10px]">
+                  <div className="space-y-3.5 text-xs border-t border-zinc-100 pt-2.5">
+                    {/* Term I Marks Stacked */}
                     <div className="space-y-1">
-                      <span className="font-semibold text-red-800">Term I Marks</span>
-                      <div className="flex gap-1">
-                        <input
-                          type="number"
-                          value={sub.t1_pt || ''}
-                          placeholder="PT"
-                          onChange={(e) => updateSubject(index, 't1_pt', e.target.value)}
-                          className="w-8 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Periodic Test (10)"
-                          max="10"
-                        />
-                        <input
-                          type="number"
-                          value={sub.t1_nb || ''}
-                          placeholder="NB"
-                          onChange={(e) => updateSubject(index, 't1_nb', e.target.value)}
-                          className="w-8 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Notebook (5)"
-                          max="5"
-                        />
-                        <input
-                          type="number"
-                          value={sub.t1_se || ''}
-                          placeholder="SE"
-                          onChange={(e) => updateSubject(index, 't1_se', e.target.value)}
-                          className="w-8 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Sub Enrichment (5)"
-                          max="5"
-                        />
-                        <input
-                          type="number"
-                          value={sub.t1_exam || ''}
-                          placeholder="Mid"
-                          onChange={(e) => updateSubject(index, 't1_exam', e.target.value)}
-                          className="w-10 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Mid-Term (80)"
-                          max="80"
-                        />
+                      <span className="block font-bold text-red-800 tracking-wide">Term I Marks</span>
+                      <div className="flex flex-wrap gap-2.5 items-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">PT (10)</span>
+                          <input
+                            type="number"
+                            value={sub.t1_pt ?? ''}
+                            onChange={(e) => updateSubject(index, 't1_pt', e.target.value)}
+                            className="w-10 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="10"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">NB (5)</span>
+                          <input
+                            type="number"
+                            value={sub.t1_nb ?? ''}
+                            onChange={(e) => updateSubject(index, 't1_nb', e.target.value)}
+                            className="w-10 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="5"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">SE (5)</span>
+                          <input
+                            type="number"
+                            value={sub.t1_se ?? ''}
+                            onChange={(e) => updateSubject(index, 't1_se', e.target.value)}
+                            className="w-10 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="5"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">Exam (80)</span>
+                          <input
+                            type="number"
+                            value={sub.t1_exam ?? ''}
+                            onChange={(e) => updateSubject(index, 't1_exam', e.target.value)}
+                            className="w-12 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="80"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <span className="font-semibold text-red-800">Term II Marks</span>
-                      <div className="flex gap-1">
-                        <input
-                          type="number"
-                          value={sub.t2_pt || ''}
-                          placeholder="PT"
-                          onChange={(e) => updateSubject(index, 't2_pt', e.target.value)}
-                          className="w-8 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Periodic Test (10)"
-                          max="10"
-                        />
-                        <input
-                          type="number"
-                          value={sub.t2_nb || ''}
-                          placeholder="NB"
-                          onChange={(e) => updateSubject(index, 't2_nb', e.target.value)}
-                          className="w-8 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Notebook (5)"
-                          max="5"
-                        />
-                        <input
-                          type="number"
-                          value={sub.t2_se || ''}
-                          placeholder="SE"
-                          onChange={(e) => updateSubject(index, 't2_se', e.target.value)}
-                          className="w-8 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Sub Enrichment (5)"
-                          max="5"
-                        />
-                        <input
-                          type="number"
-                          value={sub.t2_exam || ''}
-                          placeholder="Ann"
-                          onChange={(e) => updateSubject(index, 't2_exam', e.target.value)}
-                          className="w-10 h-7 text-center border border-zinc-200 rounded bg-white text-zinc-800"
-                          title="Annual (80)"
-                          max="80"
-                        />
+                    {/* Term II Marks Stacked */}
+                    <div className="space-y-1 border-t border-dashed border-zinc-150 pt-2">
+                      <span className="block font-bold text-red-800 tracking-wide">Term II Marks</span>
+                      <div className="flex flex-wrap gap-2.5 items-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">PT (10)</span>
+                          <input
+                            type="number"
+                            value={sub.t2_pt ?? ''}
+                            onChange={(e) => updateSubject(index, 't2_pt', e.target.value)}
+                            className="w-10 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="10"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">NB (5)</span>
+                          <input
+                            type="number"
+                            value={sub.t2_nb ?? ''}
+                            onChange={(e) => updateSubject(index, 't2_nb', e.target.value)}
+                            className="w-10 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="5"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">SE (5)</span>
+                          <input
+                            type="number"
+                            value={sub.t2_se ?? ''}
+                            onChange={(e) => updateSubject(index, 't2_se', e.target.value)}
+                            className="w-10 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="5"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[8px] font-semibold text-zinc-400">Exam (80)</span>
+                          <input
+                            type="number"
+                            value={sub.t2_exam ?? ''}
+                            onChange={(e) => updateSubject(index, 't2_exam', e.target.value)}
+                            className="w-12 h-8 text-center border border-zinc-200 rounded-lg bg-white text-zinc-800 font-bold focus:outline-none focus:border-red-500"
+                            max="80"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
