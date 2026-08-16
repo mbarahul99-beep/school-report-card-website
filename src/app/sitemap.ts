@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { client } from '../sanity/client'
 
-export const revalidate = 3600 // Cache sitemap at the edge for 1 hour
+export const dynamic = 'force-static'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://schoolreportcard.in'
