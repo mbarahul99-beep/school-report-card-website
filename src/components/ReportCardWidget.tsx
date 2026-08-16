@@ -190,7 +190,7 @@ export default function ReportCardWidget() {
   const overallPercentage = maxPossibleOverall > 0 ? parseFloat(((totalOverallObtained / maxPossibleOverall) * 100).toFixed(2)) : 0
   const overallGrade = getGrade(overallPercentage)
 
-  // Robust client-side html2pdf generator with transform-reset fix
+  // Robust client-side PDF generator using html2canvas-pro to support lab()/oklch() color spaces
   const triggerPdfDownload = async () => {
     setIsGeneratingPdf(true)
     const element = document.getElementById('report-card-print-area')
@@ -199,52 +199,53 @@ export default function ReportCardWidget() {
       return
     }
 
+    // Capture original style states for restoration in finally block
+    const originalTransform = element.style.transform
+    const originalWidth = element.style.width
+    const originalHeight = element.style.height
+
     try {
-      // 1. Inject html2pdf script if missing
-      if (!(window as any).html2pdf) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement('script')
-          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
-          script.onload = () => resolve()
-          script.onerror = () => reject(new Error('Failed to load html2pdf script'))
-          document.body.appendChild(script)
-        })
-      }
+      // 1. Dynamically import html2canvas-pro and jspdf to avoid server compiling dependencies
+      const html2canvas = (await import('html2canvas-pro')).default
+      const { jsPDF } = await import('jspdf')
 
       // 2. Temporarily reset scaling transforms for clear full-res render
-      const originalTransform = element.style.transform
-      const originalWidth = element.style.width
-      const originalHeight = element.style.height
-      
       element.style.transform = 'none'
       element.style.width = '794px'
       element.style.height = '1123px'
 
-      // 3. Configure html2pdf with A4 properties
-      const opt = {
-        margin: 0,
-        filename: `${studentName.replace(/\s+/g, '_')}_Report_Card.pdf`,
-        image: { type: 'jpeg', quality: 1.0 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          logging: false,
-          width: 794,
-          height: 1123
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
+      // 3. Render element to high-res canvas
+      const canvas = await html2canvas(element, {
+        scale: 2, // 2x density for crystal clear fonts/logos
+        useCORS: true,
+        logging: false,
+        width: 794,
+        height: 1123,
+        backgroundColor: '#ffffff'
+      })
 
-      await (window as any).html2pdf().set(opt).from(element).save()
+      // Convert canvas to image bytes
+      const imgData = canvas.toDataURL('image/jpeg', 1.0)
 
-      // 4. Restore styles
-      element.style.transform = originalTransform
-      element.style.width = originalWidth
-      element.style.height = originalHeight
+      // 4. Generate standard A4 PDF document
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      })
+
+      // A4 is 210mm x 297mm
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297)
+      pdf.save(`${studentName.replace(/\s+/g, '_')}_Report_Card.pdf`)
     } catch (err) {
       console.error('Failed to generate PDF:', err)
       alert('Could not download PDF. Please try printing or use JIDS cloud tools.')
     } finally {
+      // ALWAYS restore styling, even if rendering fails!
+      element.style.transform = originalTransform
+      element.style.width = originalWidth
+      element.style.height = originalHeight
+      
       setIsGeneratingPdf(false)
       setShowModal(false)
     }
